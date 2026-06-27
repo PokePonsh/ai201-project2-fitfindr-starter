@@ -130,7 +130,7 @@ Planning Loop ──────────────────────
                 │                                                                 │       
             Session: fit_card = "..."                                             │       
                 │                                                                 │       
-                ▼                                                                 └───────
+                ▼                                                                 └─────── error path returns here
             Return session                                                                
 
 ---

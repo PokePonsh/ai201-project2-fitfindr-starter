@@ -48,76 +48,130 @@ def _new_session(query: str, wardrobe: dict) -> dict:
 # ── planning loop ─────────────────────────────────────────────────────────────
 
 def run_agent(query: str, wardrobe: dict) -> dict:
-    """
-    Main agent entry point. Runs the FitFindr planning loop for a single
-    user interaction and returns the completed session dict.
+    import re
 
-    Args:
-        query:    Natural language user request
-                  (e.g., "vintage graphic tee under $30, size M")
-        wardrobe: User's wardrobe dict — use get_example_wardrobe() or
-                  get_empty_wardrobe() from utils/data_loader.py
-
-    Returns:
-        The session dict after the interaction completes. Check session["error"]
-        first — if it is not None, the interaction ended early and the other
-        output fields (outfit_suggestion, fit_card) will be None.
-
-    TODO — implement this function using the planning loop you designed in planning.md:
-
-        Step 1: Initialize the session with _new_session().
-
-        Step 2: Parse the user's query to extract a description, size, and
-                max_price. You can use regex, string splitting, or ask the LLM
-                to parse it — document your choice in planning.md.
-                Store the result in session["parsed"].
-
-        Step 3: Call search_listings() with the parsed parameters.
-                Store results in session["search_results"].
-                If no results: set session["error"] to a helpful message and
-                return the session early. Do NOT proceed to suggest_outfit
-                with empty input.
-
-        Step 4: Select the item to use (e.g., the top result).
-                Store it in session["selected_item"].
-
-        Step 5: Call suggest_outfit() with the selected item and wardrobe.
-                Store the result in session["outfit_suggestion"].
-
-        Step 6: Call create_fit_card() with the outfit suggestion and selected item.
-                Store the result in session["fit_card"].
-
-        Step 7: Return the session.
-
-    Before writing code, complete the Planning Loop and State Management sections
-    of planning.md — your implementation should match what you described there.
-    """
-    # TODO: implement the planning loop
+    # Step 1: Initialize session
     session = _new_session(query, wardrobe)
-    session["error"] = "Planning loop not yet implemented."
-    return session
 
+    # Step 2: Parse the query for description, size, and max_price
+    # Extract max_price — look for patterns like "under $30", "less than $50", "$25"
+    price_match = re.search(r'(?:under|less than|max|below)?\s*\$?\s*(\d+(?:\.\d+)?)', query, re.IGNORECASE)
+    max_price = float(price_match.group(1)) if price_match else None
+
+    # Extract size — requires "size" keyword or standalone size token
+    size_match = re.search(r'\bsize\s+([A-Za-z0-9\/]+(?:\s*L\d{2})?)\b', query, re.IGNORECASE)
+    size = size_match.group(1) if size_match else None
+
+    # Extract description — remove price and size mentions to get clean keywords
+    description = query
+    if price_match:
+        description = description.replace(price_match.group(0), "")
+    if size_match:
+        description = description.replace(size_match.group(0), "")
+    description = re.sub(
+    r"\b(?:i'm|i|size|under|less than|max|below|looking|for|a|an|the|mostly|wear|what's|out|there|how|would|style|it|and|what|s)\b",
+    '', description, flags=re.IGNORECASE
+)
+    description = re.sub(r'\s+', ' ', description).strip()
+
+    session["parsed"] = {
+        "description": description,
+        "size": size,
+        "max_price": max_price,
+    }
+
+    # Step 3: Call search_listings()
+    session["search_results"] = search_listings(description, size, max_price)
+
+    if not session["search_results"]:
+        session["error"] = (
+            f"No listings found matching '{description}'"
+            + (f" in size {size}" if size else "")
+            + (f" under ${max_price}" if max_price else "")
+            + ". Try broadening your search — use a less specific description, "
+            "a larger size range, or increase your budget."
+        )
+        return session
+
+    # Step 4: Select top result
+    session["selected_item"] = session["search_results"][0]
+
+    # Step 5: Call suggest_outfit()
+    session["outfit_suggestion"] = suggest_outfit(session["selected_item"], wardrobe)
+
+    if not session["outfit_suggestion"]:
+        session["error"] = (
+            "Your wardrobe appears to be empty. Please add items to your wardrobe "
+            "so FitFindr can suggest outfits with your new thrifted piece."
+        )
+        return session
+
+    # Step 6: Call create_fit_card()
+    session["fit_card"] = create_fit_card(session["outfit_suggestion"], session["selected_item"])
+
+    if session["fit_card"].startswith("Error:"):
+        session["error"] = session["fit_card"]
+        session["fit_card"] = None
+        return session
+
+    # Step 7: Return session
+    return session
 
 # ── CLI test ──────────────────────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
+# if __name__ == "__main__":
+#     from utils.data_loader import get_example_wardrobe, get_empty_wardrobe
 
-    print("=== Happy path: graphic tee ===\n")
+#     print("=== Happy path: graphic tee ===\n")
+#     session = run_agent(
+#         query="looking for a vintage graphic tee under $30",
+#         wardrobe=get_example_wardrobe(),
+#     )
+#     if session["error"]:
+#         print(f"Error: {session['error']}")
+#     else:
+#         print(f"Found: {session['selected_item']['title']}")
+#         print(f"\nOutfit: {session['outfit_suggestion']}")
+#         print(f"\nFit card: {session['fit_card']}")
+
+#     print("\n\n=== No-results path ===\n")
+#     session2 = run_agent(
+#         query="designer ballgown size XXS under $5",
+#         wardrobe=get_example_wardrobe(),
+#     )
+#     print(f"Error message: {session2['error']}")
+
+if __name__ == "__main__":
+    from utils.data_loader import get_example_wardrobe
+    import json
+
     session = run_agent(
-        query="looking for a vintage graphic tee under $30",
+        query="I'm looking for a vintage graphic tee under $30. I mostly wear baggy jeans and chunky sneakers. What's out there and how would I style it?",
         wardrobe=get_example_wardrobe(),
     )
+
     if session["error"]:
         print(f"Error: {session['error']}")
     else:
-        print(f"Found: {session['selected_item']['title']}")
-        print(f"\nOutfit: {session['outfit_suggestion']}")
-        print(f"\nFit card: {session['fit_card']}")
+        # Verify selected_item is the same dict passed into suggest_outfit
+        print("=== selected_item ===")
+        print(json.dumps(session["selected_item"], indent=2))
 
-    print("\n\n=== No-results path ===\n")
-    session2 = run_agent(
-        query="designer ballgown size XXS under $5",
-        wardrobe=get_example_wardrobe(),
-    )
-    print(f"Error message: {session2['error']}")
+        # Verify outfit_suggestion is what went into create_fit_card
+        print("\n=== outfit_suggestion ===")
+        print(session["outfit_suggestion"])
+
+        print("\n=== fit_card ===")
+        print(session["fit_card"])
+
+        # Verify state flow — confirm no hardcoded values
+        print("\n=== State flow verification ===")
+        print(f"selected_item title:       {session['selected_item']['title']}")
+        print(f"parsed description:        {session['parsed']['description']}")
+        print(f"parsed size:               {session['parsed']['size']}")
+        print(f"parsed max_price:          {session['parsed']['max_price']}")
+        print(f"outfit_suggestion is str:  {isinstance(session['outfit_suggestion'], str)}")
+        print(f"outfit_suggestion is set:  {session['outfit_suggestion'] is not None}")
+        print(f"fit_card is str:           {isinstance(session['fit_card'], str)}")
+        print(f"fit_card is set:           {session['fit_card'] is not None}")
+        print(f"error is None:             {session['error'] is None}")

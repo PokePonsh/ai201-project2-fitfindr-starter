@@ -36,6 +36,21 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
 
     # Step 4: If error, return it in the first panel
     if session["error"]:
+    # Empty wardrobe case — we still have a listing and general styling advice
+        if session["selected_item"] and session["outfit_suggestion"]:
+            item = session["selected_item"]
+            listing_text = (
+                f"Title: {item['title']}\n"
+                f"Platform: {item['platform']}\n"
+                f"Price: ${item['price']}\n"
+                f"Size: {item['size']}\n"
+                f"Condition: {item['condition']}\n"
+                f"Colors: {', '.join(item['colors'])}\n"
+                f"Style tags: {', '.join(item['style_tags'])}\n"
+                f"Description: {item['description']}"
+            )
+            return listing_text, session["outfit_suggestion"], session["error"]
+        # All other errors — nothing to show
         return session["error"], "", ""
 
     # Step 5: Format selected item into readable listing_text

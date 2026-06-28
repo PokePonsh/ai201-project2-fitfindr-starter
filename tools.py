@@ -116,37 +116,36 @@ def search_listings(
 # ── Tool 2: suggest_outfit ────────────────────────────────────────────────────
 
 def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
-    """
-    Given a thrifted item and the user's wardrobe, suggest 1–2 complete outfits.
-
-    Args:
-        new_item: A listing dict (the item the user is considering buying).
-        wardrobe: A wardrobe dict with an 'items' key containing a list of
-                  wardrobe item dicts. May be empty — handle this gracefully.
-
-    Returns:
-        A non-empty string with outfit suggestions.
-        If the wardrobe is empty, offer general styling advice for the item
-        rather than raising an exception or returning an empty string.
-
-    TODO:
-        1. Check whether wardrobe['items'] is empty.
-        2. If empty: call the LLM with a prompt for general styling ideas
-           (what kinds of items pair well, what vibe it suits, etc.).
-        3. If not empty: format the wardrobe items into a prompt and ask
-           the LLM to suggest specific outfit combinations using the new item
-           and named pieces from the wardrobe.
-        4. Return the LLM's response as a string.
-
-    Before writing code, fill in the Tool 2 section of planning.md.
-    """
     client = _get_groq_client()
 
-    # Guard against empty wardrobe
+    # Empty wardrobe — return general styling advice
     if not wardrobe.get("items"):
-        return ""
+        prompt = f"""You are a stylish and knowledgeable personal stylist.
 
-# Format wardrobe items into a readable list for the prompt
+A user is considering buying this thrifted item but hasn't set up their wardrobe yet:
+
+Name: {new_item['title']}
+Category: {new_item['category']}
+Colors: {', '.join(new_item['colors'])}
+Style tags: {', '.join(new_item['style_tags'])}
+Description: {new_item['description']}
+
+Give them general styling advice for this piece:
+- What kinds of items pair well with it
+- What aesthetic or vibe it suits
+- Specific styling tips (tucking, layering, footwear, accessories)
+- Who this piece would work best for
+
+Be specific and helpful even without knowing their wardrobe."""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.7,
+        )
+        return response.choices[0].message.content
+
+    # Non-empty wardrobe — suggest specific outfit combinations
     wardrobe_lines = []
     for item in wardrobe["items"]:
         line = (
@@ -159,7 +158,6 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
         wardrobe_lines.append(line)
     wardrobe_text = "\n".join(wardrobe_lines)
 
-    # Format the new thrifted item details
     new_item_text = (
         f"Name: {new_item['title']}\n"
         f"Category: {new_item['category']}\n"
@@ -193,7 +191,6 @@ If nothing in the wardrobe pairs well with the new item, say so clearly and expl
     )
 
     return response.choices[0].message.content
-    return ""
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────

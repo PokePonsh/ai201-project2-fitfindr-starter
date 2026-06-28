@@ -64,7 +64,27 @@ wardrobe = get_example_wardrobe()
 
 ## Tool Inventory
 
-Your README submission must document each tool's name, inputs, and return value. **These must exactly match your actual function signatures in `tools.py`.** Your documented interfaces will be checked against your actual function signatures in `tools.py` — if the parameter count or types contradict what's in the code, you may not receive full credit for that tool.
+Tool #1: search_listings
+     Inputs: 
+          1) description (str) - Short description of clothing item system is looking for.
+          2) size (str|None) - Size of clothing item system is looking for. Is None when not searching by size.
+          3) max_price (float|None) - The maximum price user is willing to pay for item. Is None when cost is not constrained.
+     Output:
+          list[dict] - List of the most relevent clothing items found in listings.json
+
+Tool #2: suggest_outfit
+     Inputs:
+          1) new_item(dict) - The most relevent item found by search_listings (list[0]).
+          2) wardrobe(dict) - List of items the user already owns.
+     Output:
+          Returns a string of 1-2 complete outfit suggestions using pieces from the user's wardrobe, and the new thrifted piece. -OR- Returns general fashion advice for the thrifted piece of clothing if the user has and empty wardrobe.
+
+Tool #3: create_fit_card
+     Inputs:
+          1) outfit(str) - The outfit suggested by suggest_outfit
+          2) new_item(dict) - The new item from search_listings.
+     Outputs:
+          Returns a string of a short "outfit of the day" type caption for the outfit from suggest_outfit. Also includes the information about the thrifted item, such as cost and where it was bought. -OR- In case wardrobe is empty, returns error string informing that the fit card could not be created due to not having clothes in the wardrobe.
 
 ---
 
@@ -74,12 +94,13 @@ Your README submission must document each tool's name, inputs, and return value.
      Walk through this carefully — it's how graders follow your agent's reasoning without a live demo.
      Use a specific example — do not leave this as a template. -->
 
-**User query:**
+**User query: **
+Find me a vintage graphic tee for less than  40 dollars, and make me an outfit with it.
 
 **Step 1 — Tool called:**
-- Tool:
-- Input:
-- Why this tool:
+- Tool: search_listings
+- Input: description= "vintage graphic tee", size= "medium", max_price = 40.
+- Why this tool: This tool gets called first so that a piece of clothing fitting the description the user looks for can be found in order to build their new outfit.
 - Output:
 
 **Step 2 — Tool called:**

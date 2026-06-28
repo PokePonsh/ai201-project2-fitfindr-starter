@@ -101,22 +101,22 @@ Find me a vintage graphic tee for less than  40 dollars, and make me an outfit w
 - Tool: search_listings
 - Input: description= "vintage graphic tee", size= "medium", max_price = 40.
 - Why this tool: This tool gets called first so that a piece of clothing fitting the description the user looks for can be found in order to build their new outfit.
-- Output:
+- Output: outputs dict of most relevent items found by the search
 
 **Step 2 — Tool called:**
-- Tool:
-- Input:
-- Why this tool:
-- Output:
+- Tool: suggest_outfit
+- Input: new_item= session["search_results"](dict output from search_listings), wardrobe= session["wardrobe"]
+- Why this tool: This tool is used next, as it takes the thrifted item found, and creates the best possible outfits using the thrifted items, and the items in the wardrobe.
+- Output: This outputs a string containing the information of the outfit that it created.
 
 **Step 3 — Tool called:**
-- Tool:
-- Input:
-- Why this tool:
-- Output:
+- Tool: create_fit_card
+- Input: outfit= session["outfit_suggestion"](the string created from suggest_outfit) new_item= session["search_results"](dict output from search_listings)
+- Why this tool: This tool is called here in order to generate the needed fit card, as only now do we have all the information needed to create the fit card for the outfit.
+- Output: This outputs a string containing the fit card, which includes the blurb about the outfit, and information about the thrifted way in a stylized way.
 
 **Final output to user:**
-
+The final output to the user is in three parts, part one: the information about the thrifted piece in an understandable way for a human reader. Part two: the outfit suggestion passed through an llm to inform the user of the outfits they can make with the thrifted piece, and how to style them. Part three: the fit card, which is readable for humans and stylized, ready to share with others as is.
 ---
 
 ## Error Handling and Fail Points
@@ -126,9 +126,9 @@ Find me a vintage graphic tee for less than  40 dollars, and make me an outfit w
 
 | Tool | Failure mode | Agent response |
 |------|-------------|----------------|
-| `search_listings` | | |
-| `suggest_outfit` | | |
-| `create_fit_card` | | |
+| `search_listings` | No item fits the user's specifications| Returns an error message informing them that no such items exist, and suggests to them on how to improve their search to find a thriftable clothing item|
+| `suggest_outfit` | The wardrobe is empty| Returns the piece of clothing, and general fashion advice about the item, rather than creating outfits.|
+| `create_fit_card` | The wardrobe is empty| Returns error that says that the wardrobe is empty, so no fit card could be made, since no new outfit was generated.|
 
 ---
 
@@ -137,8 +137,17 @@ Find me a vintage graphic tee for less than  40 dollars, and make me an outfit w
 <!-- Answer both questions with at least 2–3 sentences each. -->
 
 **One way planning.md helped during implementation:**
-
+Planning.md helped me during implementation as I knew exactly what to expect as the output from each tool. This allowed me to build and test them individually to ensure they worked before moving on to the next tool. This testing and knowing how to connect them using the agent, as I planned in planning.md then helped me to much more easily combine the tools with the agent rather than trying to edit my functions to make them work with the agent retroactively.
 **One divergence from your spec, and why:**
+One divergence from my specs was the exact way that my flow chart worked. This was done as what I initially planned for my agent to do did not actually end up working properly, as there were instances where a problem needed a solution that my initial structure would not allow for, so I modified the exact way in which the agent worked, though the overall structure remained quite similar to my original.
+
+---
+
+## AI Usage
+
+One instance in which I used AI was the creation of my create_outfit function. I provided claude, my planning for tool #2, and my flowchart. Initially it appeared to make the program exactly how I wanted it, after some simple debugging, but after testing further, I discovered that it had not included what to do if nothing was in the wardrobe correctly, so I revised the code it wrote in order to ensure that it did, in fact, behave in the way I wanted it to.
+
+Another instance in which I used AI was during the testing phase of each of my tools before creating my agent. To do this, I provided it the necessary things to test, and told it to use pytest as suggested in the examples. While it did make a complete test for my tools, it had not implemented it correctly so that it gave an error when ran. I then fixed this issue to ensure that the testing could be done properly.
 
 ---
 
